@@ -14,7 +14,8 @@ class MainPage(webapp.RequestHandler):
 application = webapp.WSGIApplication([
     ('/', MainPage),
     ('/retros', RetroHandler),
-    ('/elog', DayLogHandler),
+    ('/users', AuthUserHandler),
+    ('/daylogs', DayLogHandler),
 ], debug=True)
 
 def main():

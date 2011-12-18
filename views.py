@@ -1,12 +1,37 @@
+import sys
+import types
 import base64
-import keys
+import secret 
 import logging
+import functools
 from google.appengine.ext import db
 from google.appengine.ext import webapp
 from django.utils import simplejson
 from models import *
 
 logger=logging.getLogger(__name__)
+
+def basic_auth(fn_or_role):
+    def decorator(role, fn):
+        @functools.wraps(fn)
+        def wrapper(webappRequest, *args, **kwargs):
+            if _auth_user(webappRequest, role):
+                return fn(webappRequest, *args, **kwargs)
+            webappRequest.response.set_status(401, message="Authorization Required")
+            webappRequest.response.headers['WWW-Authenticate'] = 'Basic realm="eLogger"'
+        return wrapper
+    if type(fn_or_role) is types.FunctionType:
+        return decorator(None, fn_or_role)
+    return lambda f: decorator(fn_or_role, f)
+
+
+class AuthUserHandler(webapp.RequestHandler):
+    @basic_auth('admin')
+    def post(self):
+        self._add_user(simplejson.loads(self.request.body))
+        
+    def _add_user(self, user_dict):
+        AuthUser(key_name=user_dict['username'], api_key=user_dict['api_key']).put()
 
 class RetroHandler(webapp.RequestHandler):
     @basic_auth
@@ -26,7 +51,6 @@ class RetroHandler(webapp.RequestHandler):
 
     @basic_auth
     def post(self):
-        logger.info(self.request.body)
         self._add_retro(simplejson.loads(self.request.body))
         self.response.set_status(202)
         self.response.out.write("")
@@ -63,41 +87,35 @@ class DayLogHandler(webapp.RequestHandler):
     def _get_month_logs(self, month, year):
         day_logs = db.GqlQuery(
             "SELECT * FROM DayLog WHERE owner = :1 AND year = :2 AND month= :3 ORDER BY day DESC",
-            self.user, year, month)
+            self.user.key().name(), year, month)
         return day_logs
 
     def _save_day_log(self, log_dict):
-        day_log = DayLog()
-        day_log.day = log_dict.get('day')
-        day_log.month = log_dict.get('month')
-        day_log.year = log_dict.get('year')
-        day_log.content = log_dict.get('content')
-        day_log.plan = log_dict.get('plan')
+        day_log = DayLog(
+            owner=self.user.key().name(),
+            day = log_dict.get('day'),
+            month = log_dict.get('month'),
+            year = log_dict.get('year'),
+            content = log_dict.get('content'),
+            plan = log_dict.get('plan'),
+        )
         day_log.put()
         
-def basic_auth(func):
-    def callf(webappRequest, *args, **kwargs):
-        if _auth_user(webappRequest):
-            return func(webappRequest, *args, **kwargs)
-        webappRequest.response.set_status(401, message="Authorization Required")
-        webappRequest.response.headers['WWW-Authenticate'] = 'Basic realm="eLogger"'
-    return callf
-
-def _auth_user(webappRequest):
+def _auth_user(webappRequest, role=None):
     auth_header = webappRequest.request.headers.get('Authorization')
     if not auth_header:
         return False
-    
     auth_parts = auth_header.split(' ')
     user_pass_parts = base64.b64decode(auth_parts[1]).split(':')
     username = user_pass_parts[0]
     api_key = user_pass_parts[1]
+    if role == 'admin':
+        return username == secret.admin and api_key == secret.master_key
+
     user = AuthUser.get_by_key_name(username)
 
-    if not user or (api_key != user.api_key and api_key != keys.master_key):
+    if not user or (api_key != user.api_key and api_key != secret.master_key):
         return False
-    
     webappRequest.user = user
-    
     return True
 
