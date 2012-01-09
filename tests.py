@@ -33,7 +33,7 @@ class APITest(FunctionalTestCase, unittest.TestCase):
 
     def _init_test_data(self):
         self.post('/users', simplejson.dumps({'username':'elogger/test', 'api_key':'test'}),
-            headers={'Authorization':self._auth_header(secret.admin, secret.master_key)})
+            headers={'Authorization':self._auth_header(secret.ADMIN, secret.MASTER_KEY)})
 
 if __name__ == '__main__':
     unittest.main()

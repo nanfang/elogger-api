@@ -70,6 +70,7 @@ class DayLogHandler(webapp.RequestHandler):
     def get(self):
         year = int(self.request.get('year'))
         month = int(self.request.get('month'))
+        # check args
         day_logs = self._get_month_logs(month, year)
         self.response.headers['Content-Type'] = 'application/json'
         self.response.out.write(
@@ -110,11 +111,11 @@ def _auth_user(webappRequest, role=None):
     username = user_pass_parts[0]
     api_key = user_pass_parts[1]
     if role == 'admin':
-        return username == secret.admin and api_key == secret.master_key
+        return username == secret.ADMIN and api_key == secret.MASTER_KEY
 
     user = AuthUser.get_by_key_name(username)
 
-    if not user or (api_key != user.api_key and api_key != secret.master_key):
+    if not user or (api_key != user.api_key and api_key != secret.MASTER_KEY):
         return False
     webappRequest.user = user
     return True
