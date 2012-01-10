@@ -12,8 +12,8 @@ indexes:
 - kind: DayLog
   ancestor: no
   properties:
-  - name: owner
-  - name: day
-  - name: month
-  - name: year
-
+   - name: month
+   - name: owner
+   - name: year
+   - name: day
+     direction: desc

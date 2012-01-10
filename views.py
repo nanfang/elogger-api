@@ -1,7 +1,7 @@
 import sys
 import types
 import base64
-import secret 
+import secret
 import logging
 import functools
 from google.appengine.ext import db
@@ -9,7 +9,7 @@ from google.appengine.ext import webapp
 from django.utils import simplejson
 from models import *
 
-logger=logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 def basic_auth(fn_or_role):
     def decorator(role, fn):
@@ -19,7 +19,9 @@ def basic_auth(fn_or_role):
                 return fn(webappRequest, *args, **kwargs)
             webappRequest.response.set_status(401, message="Authorization Required")
             webappRequest.response.headers['WWW-Authenticate'] = 'Basic realm="eLogger"'
+
         return wrapper
+
     if type(fn_or_role) is types.FunctionType:
         return decorator(None, fn_or_role)
     return lambda f: decorator(fn_or_role, f)
@@ -29,25 +31,27 @@ class AuthUserHandler(webapp.RequestHandler):
     @basic_auth('admin')
     def post(self):
         self._add_user(simplejson.loads(self.request.body))
-        
+
     def _add_user(self, user_dict):
         AuthUser(key_name=user_dict['username'], api_key=user_dict['api_key']).put()
+
 
 class RetroHandler(webapp.RequestHandler):
     @basic_auth
     def get(self):
-        retros = db.GqlQuery("SELECT * FROM Retro WHERE owner = :1 ORDER BY retro_on DESC, created_on DESC", owner=self.user.key_name)
+        retros = db.GqlQuery("SELECT * FROM Retro WHERE owner = :1 ORDER BY retro_on DESC, created_on DESC",
+            owner=self.user.key_name)
         self.response.headers['Content-Type'] = 'application/json'
         self.response.out.write(
-                simplejson.dumps(
-                        [{
-                          'id': retro.key().id(),
-                          'goal': retro.goal or '',
-                          'good': retro.good or '',
-                          'bad': retro.bad or '',
-                          'action': retro.action or '',
-                          'retro_on': retro.retro_on or '',
-                         } for retro in retros]))
+            simplejson.dumps(
+                [{
+                    'id': retro.key().id(),
+                    'goal': retro.goal or '',
+                    'good': retro.good or '',
+                    'bad': retro.bad or '',
+                    'action': retro.action or '',
+                    'retro_on': retro.retro_on or '',
+                    } for retro in retros]))
 
     @basic_auth
     def post(self):
@@ -56,14 +60,15 @@ class RetroHandler(webapp.RequestHandler):
         self.response.out.write("")
 
     def _add_retro(self, retro_dict):
-        retro=Retro()
-        retro.goal=retro_dict.get('goal')
-        retro.good=retro_dict.get('good')
-        retro.bad=retro_dict.get('bad')
-        retro.action=retro_dict.get('action')
-        retro.owner=self.user.key_name
-        retro.retro_on=retro_dict.get('retro_on')
+        retro = Retro()
+        retro.goal = retro_dict.get('goal')
+        retro.good = retro_dict.get('good')
+        retro.bad = retro_dict.get('bad')
+        retro.action = retro_dict.get('action')
+        retro.owner = self.user.key_name
+        retro.retro_on = retro_dict.get('retro_on')
         retro.put()
+
 
 class DayLogHandler(webapp.RequestHandler):
     @basic_auth
@@ -92,16 +97,28 @@ class DayLogHandler(webapp.RequestHandler):
         return day_logs
 
     def _save_day_log(self, log_dict):
-        day_log = DayLog(
-            owner=self.user.key().name(),
-            day = log_dict.get('day'),
-            month = log_dict.get('month'),
-            year = log_dict.get('year'),
-            content = log_dict.get('content'),
-            plan = log_dict.get('plan'),
-        )
-        day_log.put()
-        
+        daylog = db.GqlQuery(
+            "SELECT * FROM DayLog WHERE owner = :1 AND year = :2 AND month= :3 AND day= :4",
+            self.user.key().name(),
+            log_dict.get('year'),
+            log_dict.get('month'),
+            log_dict.get('day'),
+        ).get()
+        if daylog:
+            daylog.content=log_dict.get('content')
+            daylog.plan=log_dict.get('plan')
+        else:
+            daylog = DayLog(
+                owner=self.user.key().name(),
+                day=log_dict.get('day'),
+                month=log_dict.get('month'),
+                year=log_dict.get('year'),
+                content=log_dict.get('content'),
+                plan=log_dict.get('plan'),
+            )
+        daylog.put()
+
+
 def _auth_user(webappRequest, role=None):
     auth_header = webappRequest.request.headers.get('Authorization')
     if not auth_header:
