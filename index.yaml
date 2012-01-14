@@ -17,3 +17,6 @@ indexes:
    - name: year
    - name: day
      direction: desc
+   - name: type
+   - name: created_at
+     direction: desc

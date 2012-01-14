@@ -82,7 +82,9 @@ class DayLogHandler(webapp.RequestHandler):
             simplejson.dumps(
                 [{'day': day_log.day,
                   'content': day_log.content,
-                  'plan': day_log.plan,
+                  'title': day_log.title,
+                  'type': day_log.type,
+                  'id': day_log.key().id()
                   } for day_log in day_logs]))
 
     @basic_auth
@@ -92,7 +94,7 @@ class DayLogHandler(webapp.RequestHandler):
 
     def _get_month_logs(self, month, year):
         day_logs = db.GqlQuery(
-            "SELECT * FROM DayLog WHERE owner = :1 AND year = :2 AND month= :3 ORDER BY day DESC",
+            "SELECT * FROM DayLog WHERE owner = :1 AND year = :2 AND month= :3 ORDER BY day DESC, type ASC, created_at DESC",
             self.user.key().name(), year, month)
         return day_logs
 
@@ -106,7 +108,6 @@ class DayLogHandler(webapp.RequestHandler):
         ).get()
         if daylog:
             daylog.content=log_dict.get('content')
-            daylog.plan=log_dict.get('plan')
         else:
             daylog = DayLog(
                 owner=self.user.key().name(),
@@ -114,7 +115,7 @@ class DayLogHandler(webapp.RequestHandler):
                 month=log_dict.get('month'),
                 year=log_dict.get('year'),
                 content=log_dict.get('content'),
-                plan=log_dict.get('plan'),
+
             )
         daylog.put()
 
