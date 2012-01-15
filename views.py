@@ -89,7 +89,9 @@ class DayLogHandler(webapp.RequestHandler):
 
     @basic_auth
     def post(self):
-        self._save_day_log(simplejson.loads(self.request.body))
+        id = self._save_day_log(simplejson.loads(self.request.body))
+        logger.info('saved daylog[%s]', id)
+        self.response.out.write(id)
         self.response.set_status(200)
 
     def _get_month_logs(self, month, year):
@@ -118,6 +120,7 @@ class DayLogHandler(webapp.RequestHandler):
 
             )
         daylog.put()
+        return daylog.key().id()
 
 
 def _auth_user(webappRequest, role=None):
