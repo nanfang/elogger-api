@@ -16,6 +16,7 @@ application = webapp.WSGIApplication([
     ('/retros', RetroHandler),
     ('/users', AuthUserHandler),
     ('/daylogs', DayLogHandler),
+    ('/migrate', MigrateHandler),
 ], debug=True)
 
 def main():

@@ -141,3 +141,33 @@ def _auth_user(webappRequest, role=None):
     webappRequest.user = user
     return True
 
+
+class MigrateHandler(webapp.RequestHandler):
+    @basic_auth('admin')
+    def post(self):
+        action = self.request.get('action')
+        if not action:
+            self.response.out.write("no action specified")
+            self.response.set_status(400)
+
+        actions={
+            'refresh_daylog_type':self._refresh_daylog_type,
+        }
+
+        if action in actions:
+            if actions[action]():
+                self.response.out.write('action %s done!' % action)
+                self.response.set_status(200)
+
+        else:
+            self.response.out.write("'%s' is not an available migration" % action)
+            self.response.set_status(400)
+
+    def _refresh_daylog_type(self):
+        for day_log in DayLog.all():
+#            if day_log.type is not None:
+            day_log.type=DAY_LOG_DAILY
+            day_log.created_at=datetime.datetime.now()
+            day_log.put()
+            logger.info('migrate daylog[%s-%s-%s]', day_log.year, day_log.month, day_log.day)
+        return True
