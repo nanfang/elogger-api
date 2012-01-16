@@ -25,4 +25,6 @@ class DayLog(db.Model):
 
 class AuthUser(db.Model):
     api_key = db.StringProperty()
-
+    username = db.StringProperty()
+    nickname = db.StringProperty()
+    created_at = db.DateTimeProperty(required=True, default=datetime.datetime.now())
