@@ -33,7 +33,12 @@ class AuthUserHandler(webapp.RequestHandler):
         self._add_user(simplejson.loads(self.request.body))
 
     def _add_user(self, user_dict):
-        AuthUser(key_name=user_dict['username'], api_key=user_dict['api_key']).put()
+        AuthUser(
+            key_name=user_dict['userid'],
+            username=user_dict['username'],
+            nickname=user_dict['nickname'],
+            created_at = datetime.datetime.now(),
+            api_key=user_dict['api_key']).put()
 
 
 class RetroHandler(webapp.RequestHandler):
@@ -129,12 +134,12 @@ def _auth_user(webappRequest, role=None):
         return False
     auth_parts = auth_header.split(' ')
     user_pass_parts = base64.b64decode(auth_parts[1]).split(':')
-    username = user_pass_parts[0]
+    userid = user_pass_parts[0]
     api_key = user_pass_parts[1]
     if role == 'admin':
-        return username == secret.ADMIN and api_key == secret.MASTER_KEY
+        return userid == secret.ADMIN and api_key == secret.MASTER_KEY
 
-    user = AuthUser.get_by_key_name(username)
+    user = AuthUser.get_by_key_name(userid)
 
     if not user or (api_key != user.api_key and api_key != secret.MASTER_KEY):
         return False
