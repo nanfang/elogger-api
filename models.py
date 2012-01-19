@@ -28,3 +28,4 @@ class AuthUser(db.Model):
     username = db.StringProperty()
     nickname = db.StringProperty()
     created_at = db.DateTimeProperty(required=True, default=datetime.datetime.now())
+    last_login_at = db.DateTimeProperty(required=True, default=datetime.datetime.now())

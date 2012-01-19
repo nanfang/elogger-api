@@ -33,12 +33,24 @@ class AuthUserHandler(webapp.RequestHandler):
         self._add_user(simplejson.loads(self.request.body))
 
     def _add_user(self, user_dict):
-        AuthUser(
-            key_name=user_dict['userid'],
-            username=user_dict['username'],
-            nickname=user_dict['nickname'],
-            created_at = datetime.datetime.now(),
-            api_key=user_dict['api_key']).put()
+        user = AuthUser.get_by_key_name(user_dict['userid'])
+        now = datetime.datetime.now()
+        if user:
+            # TODO fixme, seems not work below lines
+            user.last_login_at = now
+            user.username = user_dict['username'],
+            user.nickname = user_dict['nickname'],
+            user.api_key = user_dict['api_key'],
+        else:
+            user = AuthUser(
+                key_name=user_dict['userid'],
+                username=user_dict['username'],
+                nickname=user_dict['nickname'],
+                api_key=user_dict['api_key'],
+                created_at=now,
+                last_login_at=now,
+            )
+        user.put()
 
 
 class RetroHandler(webapp.RequestHandler):
@@ -90,7 +102,7 @@ class DayLogHandler(webapp.RequestHandler):
                   'title': day_log.title,
                   'type': day_log.type,
                   'id': day_log.key().id()
-                  } for day_log in day_logs]))
+                } for day_log in day_logs]))
 
     @basic_auth
     def post(self):
@@ -101,7 +113,8 @@ class DayLogHandler(webapp.RequestHandler):
 
     def _get_month_logs(self, month, year):
         day_logs = db.GqlQuery(
-            "SELECT * FROM DayLog WHERE owner = :1 AND year = :2 AND month= :3 ORDER BY day DESC, type ASC, created_at DESC",
+            "SELECT * FROM DayLog WHERE owner = :1 AND year = :2 AND month= :3 ORDER BY day DESC, type ASC, created_at DESC"
+            ,
             self.user.key().name(), year, month)
         return day_logs
 
@@ -114,7 +127,7 @@ class DayLogHandler(webapp.RequestHandler):
             log_dict.get('day'),
         ).get()
         if daylog:
-            daylog.content=log_dict.get('content')
+            daylog.content = log_dict.get('content')
         else:
             daylog = DayLog(
                 owner=self.user.key().name(),
@@ -155,9 +168,10 @@ class MigrateHandler(webapp.RequestHandler):
             self.response.out.write("no action specified")
             self.response.set_status(400)
 
-        actions={
-            'refresh_daylog_type':self._refresh_daylog_type,
-        }
+        actions = {
+            'refresh_daylog_type': self._refresh_daylog_type,
+            'migrate_owners': self._migrate_owners,
+            }
 
         if action in actions:
             if actions[action]():
@@ -168,11 +182,18 @@ class MigrateHandler(webapp.RequestHandler):
             self.response.out.write("'%s' is not an available migration" % action)
             self.response.set_status(400)
 
+    # TODO remove after done
+    def _migrate_owners(self):
+        for day_log in db.GqlQuery("SELECT * FROM DayLog WHERE owner = :1", 'weibo/nanfang05'):
+            day_log.owner='weibo/2053167845'
+            day_log.put()
+        return True
+
     def _refresh_daylog_type(self):
         for day_log in DayLog.all():
-#            if day_log.type is not None:
-            day_log.type=DAY_LOG_DAILY
-            day_log.created_at=datetime.datetime.now()
+        #            if day_log.type is not None:
+            day_log.type = DAY_LOG_DAILY
+            day_log.created_at = datetime.datetime.now()
             day_log.put()
             logger.info('migrate daylog[%s-%s-%s]', day_log.year, day_log.month, day_log.day)
         return True
