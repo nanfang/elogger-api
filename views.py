@@ -38,9 +38,9 @@ class AuthUserHandler(webapp.RequestHandler):
         if user:
             # TODO fixme, seems not work below lines
             user.last_login_at = now
-            user.username = user_dict['username'],
-            user.nickname = user_dict['nickname'],
-            user.api_key = user_dict['api_key'],
+            user.username = user_dict['username']
+            user.nickname = user_dict['nickname']
+            user.api_key = user_dict['api_key']
         else:
             user = AuthUser(
                 key_name=user_dict['userid'],
